@@ -46,7 +46,7 @@ async function getItems(query: string) {
   let resource = await supabase
     .from("items")
     .select()
-    .ilike('title', `%${query}%`);
+    .eq('q', query);
 
   return resource.data.sort(({ unit_price: unitPriceA }, { unit_price: unitPriceB }) => unitPriceA - unitPriceB);
 }
