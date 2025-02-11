@@ -1,6 +1,7 @@
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import { eTag, ifNoneMatch } from "jsr:@std/http/etag";
 import type { CleanedItem, Item, Store } from "./types.ts";
+import { renderMemberPrompt, renderSavings, renderTable } from "./render.ts";
 
 const supabase = createClient(
   Deno.env.get("SUPABASE_URL")!,
@@ -9,6 +10,7 @@ const supabase = createClient(
 
 const adminKey = Deno.env.get("ADMIN_KEY");
 
+const svgLogo = await Deno.readTextFile("logo.svg");
 const stylesheet = await Deno.readTextFile("style.css");
 
 const currencyFormatter = new Intl.NumberFormat("sv-SE", {
@@ -130,31 +132,13 @@ Deno.serve(async (req: Request) => {
       };
     });
 
-  const savings =
-    `Kolla där! Du kan spara hela ${savingsAmount}/${unit} på ${query}.<br>Skillnaden mellan den billigaste och dyraste varan är <span class="savings">${savingsPercent} %</span>!`;
-  const memberPrompt = !admin
-    ? `<div class="feedback-danger">De ${censoredCount} billigaste varorna är gömda, men syns när du blir medlem.</div>`
-    : "";
-
   const listItems = cleanedItems
-    .map((item) => `
-        <tr>
-            <td data-label="Namn">${item.title}</td>
-            <td data-label="Kedja">${item.storeName}</td>
-            <td data-label="Styckpris">${item.itemPrice}</td>
-            <td data-label="Jämförelsepris">${item.unitPrice}</td>
-        </tr>
-    `);
+    .map((
+      item,
+    ) => [item.title, item.storeName, item.itemPrice, item.unitPrice]);
 
   if (censoredCount > 0) {
-    listItems.unshift(`
-        <tr>
-            <td data-label="Namn">${censor()}</td>
-            <td data-label="Kedja">${censor()}</td>
-            <td data-label="Styckpris">${censor()}</td>
-            <td data-label="Jämförelsepris">${censor()}</td>
-        </tr>
-    `);
+    listItems.unshift([censor(), censor(), censor(), censor()]);
   }
 
   const body = `
@@ -170,7 +154,7 @@ Deno.serve(async (req: Request) => {
         </head>
         <body>
             <header>
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" id="shopping-basket"><path d="M14,18a1,1,0,0,0,1-1V15a1,1,0,0,0-2,0v2A1,1,0,0,0,14,18Zm-4,0a1,1,0,0,0,1-1V15a1,1,0,0,0-2,0v2A1,1,0,0,0,10,18ZM19,6H17.62L15.89,2.55a1,1,0,1,0-1.78.9L15.38,6H8.62L9.89,3.45a1,1,0,0,0-1.78-.9L6.38,6H5a3,3,0,0,0-.92,5.84l.74,7.46a3,3,0,0,0,3,2.7h8.38a3,3,0,0,0,3-2.7l.74-7.46A3,3,0,0,0,19,6ZM17.19,19.1a1,1,0,0,1-1,.9H7.81a1,1,0,0,1-1-.9L6.1,12H17.9ZM19,10H5A1,1,0,0,1,5,8H19a1,1,0,0,1,0,2Z"></path></svg>
+                ${svgLogo}
                 <h1>Spendera <strong>mindre cash</strong> på <strong>${query}</strong> i Arvika</h1>
                 <p>Det billigaste priset på dina favoritvaror!</p>
             </header>
@@ -180,21 +164,9 @@ Deno.serve(async (req: Request) => {
               <a href="?q=kaffe">Kaffe</a>
               <a href="?q=fläskfilé">Fläskfilé</a>
             </nav>
-            <p>${savings}</p>
-            <p>${memberPrompt}</p>
-            <table>
-                <thead>
-                    <tr>
-                        <th>Namn</th>
-                        <th>Kedja</th>
-                        <th>Styckpris</th>
-                        <th>Jämförelsepris</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    ${listItems.join("")}
-                </tbody>
-            </table>
+            <p>${renderSavings(query, unit, savingsAmount, savingsPercent)}</p>
+            <p>${renderMemberPrompt(admin, censoredCount)}</p>
+            ${renderTable(listItems)}
             <footer>
               <small>Ett projekt från <a href="https://glatek.se">Glatek</a></small>
             </footer>
