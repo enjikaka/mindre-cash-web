@@ -5,6 +5,8 @@ const supabase = createClient(
   Deno.env.get("SUPABASE_KEY")!,
 );
 
+const text = await Deno.readTextFile("style.css");
+
 const currencyFormatter = new Intl.NumberFormat('sv-SE', { style: 'currency', currency: 'SEK' });
 
 function generateETag(content: string): string {
@@ -131,118 +133,7 @@ Deno.serve(async (req: Request) => {
             <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
             <link href="https://fonts.googleapis.com/css2?family=Public+Sans:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
             <style>
-            body {
-              background-color: #FFFBEE;
-              font-family: "Public Sans", serif;
-              font-optical-sizing: auto;
-              font-weight: 400;
-              font-style: normal;  
-              margin: 4em;
-            }
-            nav { display: flex; gap: 1rem; }
-            nav a { flex: 1; color: currentcolor; text-align: center; transition: all 200ms ease; background-color: #d9beff; padding: .5em; &:hover { background-color:#f0e5ff } &:active { box-shadow: -2px 2px 0 black; background-color:#b37dff;  } }
-            header strong { color: #FF8ACD; font-weight: 800; letter-spacing: -.5px }
-            header svg { width: 128px; height: 128px; fill: #FF8ACD }
-            th { border-bottom: 2px solid black }
-            thead { position: sticky; top: 0 }
-            table {
-              background-color: white;
-              width: 100%;
-              text-rendering: optimizeLegibility;
-              table-layout: fixed;
-            }
-            .savings {
-              display: inline-block;
-              padding: .5em 1em;
-              margin: 0 .5em;
-              background-color: #3cd39d;
-              color: white;
-              font-weight: 700;
-              text-rendering: geometricPrecision;
-            }
-            .feedback-danger {
-              background-color: #ff5454;
-              padding: 1em;
-            }
-            .feedback-danger,
-            nav a,
-            table,
-            .savings {
-              border: 2px solid black;
-              box-shadow: -4px 4px 0 black;
-            }
-            thead {
-              background-color: #ffe959;
-            }
-            td:nth-child(2) { text-transform: capitalize; text-align: center }
-            td:nth-child(3),
-            td:nth-child(4) {
-              text-rendering: geometricPrecision;
-              text-align: right;
-            }
-            tbody tr:nth-child(even) {
-              background-color: #e2e2e2;
-            }
-            th, td {
-              padding: .4em;
-              overflow: hidden;
-              text-overflow: ellipsis;
-            }
-            footer {
-              text-align: center;
-              margin: 1em 0;
-
-              a {
-                color: currentColor;
-                text-decoration: none;
-
-                &:hover { text-decoration: underline }
-              }
-            }
-            @media screen and (max-width: 600px) {
-              body {
-                margin: 1em;
-              }
-
-              table thead {
-                border: none;
-                clip: rect(0 0 0 0);
-                height: 1px;
-                margin: -1px;
-                overflow: hidden;
-                padding: 0;
-                position: absolute;
-                width: 1px;
-              }
-              
-              table tr {
-                display: block;
-                border-bottom: 2px solid black;
-              }
-              
-              table td {
-                border-bottom: 1px solid #e2e2e2;
-                display: block;
-              }
-              
-              table td::before {
-                content: attr(data-label);
-                float: left;
-                font-weight: bold;
-                text-transform: uppercase;
-              }
-              
-              table td:last-child {
-                border-bottom: 0;
-              }
-
-              td:nth-child(1),
-              td:nth-child(2),
-              td:nth-child(3),
-              td:nth-child(4) {
-                text-align: right;
-              }
-            }
+            
             </style>
         </head>
         <body>
