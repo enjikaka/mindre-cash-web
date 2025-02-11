@@ -1,35 +1,26 @@
 import { createClient } from "jsr:@supabase/supabase-js@2";
+import { eTag, ifNoneMatch } from "jsr:@std/http/etag";
 
 const supabase = createClient(
   Deno.env.get("SUPABASE_URL")!,
   Deno.env.get("SUPABASE_KEY")!,
 );
 
-const text = await Deno.readTextFile("style.css");
+const stylesheet = await Deno.readTextFile("style.css");
 
-const currencyFormatter = new Intl.NumberFormat('sv-SE', { style: 'currency', currency: 'SEK' });
-
-function generateETag(content: string): string {
-  // Simple ETag based on content hash (better to use crypto in real-world apps)
-  const encoder = new TextEncoder();
-  const data = encoder.encode(content);
-  let hash = 0;
-  
-  for (let i = 0; i < data.length; i++) {
-    hash = (hash * 31 + data[i]) >>> 0;
-  }
-
-  return `"${hash.toString(16)}"`;
-}
+const currencyFormatter = new Intl.NumberFormat("sv-SE", {
+  style: "currency",
+  currency: "SEK",
+});
 
 function getNextSunday23h59(): string {
   const now = new Date();
   const daysUntilSunday = (7 - now.getDay()) % 7; // Days to next Sunday (0 = Sunday)
   const nextSunday = new Date(now);
-  
+
   nextSunday.setDate(now.getDate() + daysUntilSunday);
   nextSunday.setHours(23, 59, 59, 999); // Set time to 23:59:59
-  
+
   return nextSunday.toUTCString();
 }
 
@@ -40,17 +31,40 @@ const getRandomInteger = (min, max) => {
   return Math.floor(Math.random() * (max - min)) + min;
 };
 
-const randomUnicodes = ['𜵐', '𜵑', '𜵒', '𜵓', '𜵔', '𜵕', '𜵖', '𜵗', '𜵘', '𜵙', '𜵚', '𜵛', '𜵜', '𜵝', '𜵞', '𜵟'];
-const getRadomUnicodeLetter = () => randomUnicodes[getRandomInteger(0, randomUnicodes.length - 1)];
-const censor = str => new Array(getRandomInteger(6, 12)).fill(0).map(() => getRadomUnicodeLetter()).join('');
+const randomUnicodes = [
+  "𜵐",
+  "𜵑",
+  "𜵒",
+  "𜵓",
+  "𜵔",
+  "𜵕",
+  "𜵖",
+  "𜵗",
+  "𜵘",
+  "𜵙",
+  "𜵚",
+  "𜵛",
+  "𜵜",
+  "𜵝",
+  "𜵞",
+  "𜵟",
+];
+const getRadomUnicodeLetter = () =>
+  randomUnicodes[getRandomInteger(0, randomUnicodes.length - 1)];
+const censor = (str) =>
+  new Array(getRandomInteger(6, 12)).fill(0).map(() => getRadomUnicodeLetter())
+    .join("");
 
 async function getItems(query: string) {
   let resource = await supabase
     .from("items")
     .select()
-    .eq('q', query);
+    .eq("q", query);
 
-  return resource.data.sort(({ unit_price: unitPriceA }, { unit_price: unitPriceB }) => unitPriceA - unitPriceB);
+  return resource.data.sort((
+    { unit_price: unitPriceA },
+    { unit_price: unitPriceB },
+  ) => unitPriceA - unitPriceB);
 }
 
 async function getStores() {
@@ -63,65 +77,83 @@ async function getStores() {
 
 Deno.serve(async (req: Request) => {
   const url = new URL(req.url);
-  const query = url.searchParams.get('q') ?? 'smör';
-  const admin = Boolean(url.searchParams.get('admin') === 'true') ?? false;
+  const query = url.searchParams.get("q") ?? "smör";
+  const admin = Boolean(url.searchParams.get("admin") === "true") ?? false;
 
   let items = await getItems(query);
   const stores = await getStores();
 
   if (items.length === 0) {
-    return new Response('Not found', {
-      status: 404
+    return new Response("Not found", {
+      status: 404,
     });
   }
 
   // Smarter filtering
-  if (query === 'mjölk') {
-    items = items.filter(({ title }) => !title.includes('kaffe'));
+  if (query === "mjölk") {
+    items = items.filter(({ title }) => !title.includes("kaffe"));
   }
 
-  if (query === 'kaffe') {
-    items = items.filter(({ unit }) => unit === 'kg');
+  if (query === "kaffe") {
+    items = items.filter(({ unit }) => unit === "kg");
   }
 
   const unit = items[0].unit;
-  const savingsPercent = ((items[0].unit_price / items[items.length - 1].unit_price) * 100).toFixed(0);
-  const savingsAmount = currencyFormatter.format(Math.abs(items[items.length - 1].unit_price - items[0].unit_price));
-  
+  const savingsPercent =
+    ((items[0].unit_price / items[items.length - 1].unit_price) * 100).toFixed(
+      0,
+    );
+  const savingsAmount = currencyFormatter.format(
+    Math.abs(items[items.length - 1].unit_price - items[0].unit_price),
+  );
+
   const cleanedItems = items
     .map((item, i) => {
-        const storeName = stores.find((x) => x.uuid === item.store_uuid).name;
-        const itemPrice = currencyFormatter.format(item.item_price);
-        const unitPrice = currencyFormatter.format(item.unit_price);
+      const storeName = stores.find((x) => x.uuid === item.store_uuid).name;
+      const itemPrice = currencyFormatter.format(item.item_price);
+      const unitPrice = currencyFormatter.format(item.unit_price);
 
-        if (!admin && i / items.length < 0.5) {
-            item.title = censor(item.title);
-            item.storeName = censor(storeName);
-            item.itemPrice = censor(itemPrice);
-            item.unitPrice = censor(unitPrice);
-            item.censored = true;
-        } else {
-            item.storeName = storeName;
-            item.itemPrice = itemPrice;
-            item.unitPrice = unitPrice;
-            item.censored = false;
-        }
+      if (!admin && i / items.length < 0.5) {
+        item.title = censor(item.title);
+        item.storeName = censor(storeName);
+        item.itemPrice = censor(itemPrice);
+        item.unitPrice = censor(unitPrice);
+        item.censored = true;
+      } else {
+        item.storeName = storeName;
+        item.itemPrice = itemPrice;
+        item.unitPrice = unitPrice;
+        item.censored = false;
+      }
 
-        return item;
+      return item;
     });
 
-  const savings = `Kolla där! Du kan spara hela ${savingsAmount}/${unit} på ${query}.<br>Skillnaden mellan den billigaste och dyraste varan är <span class="savings">${savingsPercent} %</span>!`;
-  const memberPrompt = !admin ? `<div class="feedback-danger">De ${cleanedItems.filter(x => x.censored).length} billigaste varorna syns när du blir medlem.</div>` : '';
+  // If censored items exists, only render one of them.
+  const itemsToRender = cleanedItems[0].censored
+    ? [
+      cleanedItems[0],
+      ...cleanedItems.filter((item) => !item.censored),
+    ]
+    : cleanedItems;
 
-  const listItems = cleanedItems
+  const savings =
+    `Kolla där! Du kan spara hela ${savingsAmount}/${unit} på ${query}.<br>Skillnaden mellan den billigaste och dyraste varan är <span class="savings">${savingsPercent} %</span>!`;
+  const memberPrompt = !admin
+    ? `<div class="feedback-danger">De ${
+      itemsToRender.filter((x) => x.censored).length
+    } billigaste varorna syns när du blir medlem.</div>`
+    : "";
+
+  const listItems = itemsToRender
     .map((item) => `
-        <tr${item.censored ? ' class="censored"' : ''}>
+        <tr${item.censored ? ' class="censored"' : ""}>
             <td data-label="Namn">${item.title}</td>
             <td data-label="Kedja">${item.storeName}</td>
             <td data-label="Styckpris">${item.itemPrice}</td>
             <td data-label="Jämförelsepris">${item.unitPrice}</td>
         </tr>
-    `).join('');
+    `).join("");
 
   const body = `
         <!doctype html>
@@ -132,9 +164,7 @@ Deno.serve(async (req: Request) => {
             <link rel="preconnect" href="https://fonts.googleapis.com">
             <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
             <link href="https://fonts.googleapis.com/css2?family=Public+Sans:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
-            <style>
-            
-            </style>
+            <style>${stylesheet}</style>
         </head>
         <body>
             <header>
@@ -170,18 +200,20 @@ Deno.serve(async (req: Request) => {
         </html>
     `;
 
-  const etag = generateETag(JSON.stringify(items));
+  const etag = await eTag(JSON.stringify(items));
 
-  if (req.headers.get("if-none-match") === etag) {
-    return new Response(null, { status: 304, headers }); // Not Modified
+  const ifNoneMatchValue = req.headers.get("if-none-match");
+
+  if (!ifNoneMatch(ifNoneMatchValue, etag)) {
+    return new Response(null, { status: 304, headers: { etag } });
   }
 
   return new Response(body, {
-      headers: new Headers({
-          'content-type': 'text/html',
-          'cache-control': "public, max-age=604800, immutable",
-          'expires': getNextSunday23h59(),
-          'etag': etag
-      })
+    headers: new Headers({
+      "content-type": "text/html",
+      "cache-control": "public, max-age=604800, immutable",
+      "expires": getNextSunday23h59(),
+      "etag": etag,
+    }),
   });
 });
