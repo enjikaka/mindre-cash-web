@@ -1,10 +1,13 @@
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import { eTag, ifNoneMatch } from "jsr:@std/http/etag";
+import type { CleanedItem, Item, Store } from "./types.ts";
 
 const supabase = createClient(
   Deno.env.get("SUPABASE_URL")!,
   Deno.env.get("SUPABASE_KEY")!,
 );
+
+const adminKey = Deno.env.get("ADMIN_KEY");
 
 const stylesheet = await Deno.readTextFile("style.css");
 
@@ -24,7 +27,7 @@ function getNextSunday23h59(): string {
   return nextSunday.toUTCString();
 }
 
-const getRandomInteger = (min, max) => {
+const getRandomInteger = (min: number, max: number) => {
   min = Math.ceil(min);
   max = Math.floor(max);
 
@@ -51,39 +54,41 @@ const randomUnicodes = [
 ];
 const getRadomUnicodeLetter = () =>
   randomUnicodes[getRandomInteger(0, randomUnicodes.length - 1)];
-const censor = (str) =>
+const censor = () =>
   new Array(getRandomInteger(6, 12)).fill(0).map(() => getRadomUnicodeLetter())
     .join("");
 
-async function getItems(query: string) {
-  let resource = await supabase
+async function getItems(query: string): Promise<Item[]> {
+  const resource = await supabase
     .from("items")
     .select()
     .eq("q", query);
 
-  return resource.data.sort((
-    { unit_price: unitPriceA },
-    { unit_price: unitPriceB },
-  ) => unitPriceA - unitPriceB);
+  return resource.data
+    ? resource.data.sort((
+      { unit_price: unitPriceA },
+      { unit_price: unitPriceB },
+    ) => unitPriceA - unitPriceB)
+    : [];
 }
 
-async function getStores() {
-  let resource = await supabase
+async function getStores(): Promise<Store[]> {
+  const resource = await supabase
     .from("stores")
     .select();
 
-  return resource.data;
+  return resource.data ?? [];
 }
 
 Deno.serve(async (req: Request) => {
   const url = new URL(req.url);
   const query = url.searchParams.get("q") ?? "smör";
-  const admin = Boolean(url.searchParams.get("admin") === "true") ?? false;
+  const admin = Boolean(url.searchParams.get("admin") === adminKey) ?? false;
 
   let items = await getItems(query);
   const stores = await getStores();
 
-  if (items.length === 0) {
+  if (items.length === 0 || !stores || stores.length === 0) {
     return new Response("Not found", {
       status: 404,
     });
@@ -107,53 +112,50 @@ Deno.serve(async (req: Request) => {
     Math.abs(items[items.length - 1].unit_price - items[0].unit_price),
   );
 
+  const censoredCount = !admin ? Math.floor(items.length / 2) : 0;
+
   const cleanedItems = items
-    .map((item, i) => {
-      const storeName = stores.find((x) => x.uuid === item.store_uuid).name;
+    .filter((_, i, arr) => admin ? true : i / arr.length >= 0.5)
+    .map((item: Item): CleanedItem => {
+      const storeName = stores.find((x) => x.uuid === item.store_uuid)?.name ??
+        String(item.store_uuid);
       const itemPrice = currencyFormatter.format(item.item_price);
       const unitPrice = currencyFormatter.format(item.unit_price);
 
-      if (!admin && i / items.length < 0.5) {
-        item.title = censor(item.title);
-        item.storeName = censor(storeName);
-        item.itemPrice = censor(itemPrice);
-        item.unitPrice = censor(unitPrice);
-        item.censored = true;
-      } else {
-        item.storeName = storeName;
-        item.itemPrice = itemPrice;
-        item.unitPrice = unitPrice;
-        item.censored = false;
-      }
-
-      return item;
+      return {
+        storeName,
+        itemPrice,
+        unitPrice,
+        title: item.title,
+      };
     });
-
-  // If censored items exists, only render one of them.
-  const itemsToRender = cleanedItems[0].censored
-    ? [
-      cleanedItems[0],
-      ...cleanedItems.filter((item) => !item.censored),
-    ]
-    : cleanedItems;
 
   const savings =
     `Kolla där! Du kan spara hela ${savingsAmount}/${unit} på ${query}.<br>Skillnaden mellan den billigaste och dyraste varan är <span class="savings">${savingsPercent} %</span>!`;
   const memberPrompt = !admin
-    ? `<div class="feedback-danger">De ${
-      itemsToRender.filter((x) => x.censored).length
-    } billigaste varorna syns när du blir medlem.</div>`
+    ? `<div class="feedback-danger">De ${censoredCount} billigaste varorna är gömda, men syns när du blir medlem.</div>`
     : "";
 
-  const listItems = itemsToRender
+  const listItems = cleanedItems
     .map((item) => `
-        <tr${item.censored ? ' class="censored"' : ""}>
+        <tr>
             <td data-label="Namn">${item.title}</td>
             <td data-label="Kedja">${item.storeName}</td>
             <td data-label="Styckpris">${item.itemPrice}</td>
             <td data-label="Jämförelsepris">${item.unitPrice}</td>
         </tr>
-    `).join("");
+    `);
+
+  if (censoredCount > 0) {
+    listItems.unshift(`
+        <tr>
+            <td data-label="Namn">${censor()}</td>
+            <td data-label="Kedja">${censor()}</td>
+            <td data-label="Styckpris">${censor()}</td>
+            <td data-label="Jämförelsepris">${censor()}</td>
+        </tr>
+    `);
+  }
 
   const body = `
         <!doctype html>
@@ -173,10 +175,10 @@ Deno.serve(async (req: Request) => {
                 <p>Det billigaste priset på dina favoritvaror!</p>
             </header>
             <nav>
-            <a href="?q=smör">Smör</a>
-            <a href="?q=mjölk">Mjölk</a>
-            <a href="?q=kaffe">Kaffe</a>
-            <a href="?q=fläskfilé">Fläskfilé</a>
+              <a href="?q=smör">Smör</a>
+              <a href="?q=mjölk">Mjölk</a>
+              <a href="?q=kaffe">Kaffe</a>
+              <a href="?q=fläskfilé">Fläskfilé</a>
             </nav>
             <p>${savings}</p>
             <p>${memberPrompt}</p>
@@ -190,7 +192,7 @@ Deno.serve(async (req: Request) => {
                     </tr>
                 </thead>
                 <tbody>
-                    ${listItems}
+                    ${listItems.join("")}
                 </tbody>
             </table>
             <footer>
