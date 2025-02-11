@@ -174,7 +174,7 @@ Deno.serve(async (req: Request) => {
         </html>
     `;
 
-  const etag = await eTag(JSON.stringify(items));
+  const etag = await eTag(body);
 
   const ifNoneMatchValue = req.headers.get("if-none-match");
 
