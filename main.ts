@@ -170,6 +170,7 @@ Deno.serve(async (req: Request) => {
             <footer>
               <small>Ett projekt från <a href="https://glatek.se">Glatek</a></small>
             </footer>
+            <script defer data-domain="mindre.cash" src="https://plausible.glate.ch/js/script.js"></script>
           </body>
         </html>
     `;
