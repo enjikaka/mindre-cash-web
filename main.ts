@@ -1,4 +1,4 @@
-import { createClient } from "jsr:@supabase/supabase-js@2";
+import { createClient } from "jsr:@supabase/supabase-js";
 import { eTag, ifNoneMatch } from "jsr:@std/http/etag";
 import type { CleanedItem, Item, Store } from "./types.ts";
 import { renderMemberPrompt, renderSavings, renderTable } from "./render.ts";
