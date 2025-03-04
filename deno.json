@@ -2,5 +2,9 @@
   "imports": {
     "@std/http": "jsr:@std/http@^1.0.13",
     "@supabase/supabase-js": "jsr:@supabase/supabase-js@^2.49.1"
+  },
+  "tasks": {
+    "dev": "deno run --allow-read --allow-env --allow-net --env-file --watch main.ts",
+    "start": "deno run --allow-read --allow-env --allow-net --env-file main.ts"
   }
 }
