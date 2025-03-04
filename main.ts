@@ -61,8 +61,10 @@ const randomUnicodes = [
 ];
 const getRadomUnicodeLetter = () =>
   randomUnicodes[getRandomInteger(0, randomUnicodes.length - 1)];
-const censor = () =>
-  new Array(getRandomInteger(6, 12)).fill(0).map(() => getRadomUnicodeLetter())
+const censor = (seed: number) =>
+  new Array(getRandomInteger(seed / 2, seed)).fill(0).map(() =>
+    getRadomUnicodeLetter()
+  )
     .join("");
 
 async function getItems(query: string): Promise<Item[]> {
@@ -92,7 +94,8 @@ function filterItems(items: Item[], query: string): Item[] {
   if (items.length === 0) return items;
 
   const filters: Record<string, (item: Item) => boolean> = {
-    "mjölk": ({ title }) => !title.includes("kaffe"),
+    "smör": ({ title }) => !title.toLocaleLowerCase().includes("redbart"),
+    "mjölk": ({ title }) => !title.toLocaleLowerCase().includes("kaffe"),
     "kaffe": ({ unit }) => unit === "kg",
   };
 
@@ -135,8 +138,24 @@ Deno.serve(async (req: Request) => {
         String(item.store_uuid);
       const itemPrice = currencyFormatter.format(item.item_price);
       const unitPrice = currencyFormatter.format(item.unit_price);
+      const marks = [];
+
+      if (item.organic) {
+        marks.push('<span title="ekologisk">🌱</span>');
+      }
+
+      console.log(item.country_of_origin);
+
+      if (
+        item.country_of_origin?.toLocaleLowerCase().includes("sweden") ||
+        item.country_of_origin?.toLocaleLowerCase().includes("sverige") ||
+        item.title.toLocaleLowerCase().includes("svenskt")
+      ) {
+        marks.push('<span title="från Sverige">🇸🇪</span>');
+      }
 
       return {
+        marks: marks.join(" "),
         storeName,
         itemPrice,
         unitPrice,
@@ -147,11 +166,22 @@ Deno.serve(async (req: Request) => {
   const listItems = cleanedItems
     .map((
       item,
-    ) => [item.title, item.storeName, item.itemPrice, item.unitPrice]);
+    ) => [
+      item.marks,
+      item.title,
+      item.storeName,
+      item.itemPrice,
+      item.unitPrice,
+    ]);
 
   if (censoredCount > 0) {
-    listItems.unshift([censor(), censor(), censor(), censor()]);
+    listItems.unshift([censor(2), censor(12), censor(8), censor(6), censor(6)]);
   }
+
+  const storeName = admin
+    ? stores.find((x) => x.uuid === items[0].store_uuid)?.name ??
+      String(items[0].store_uuid)
+    : censor(12);
 
   const body = `
         <!doctype html>
@@ -176,7 +206,9 @@ Deno.serve(async (req: Request) => {
               <a href="?q=kaffe">Kaffe</a>
               <a href="?q=fläskfilé">Fläskfilé</a>
             </nav>
-            <p>${renderSavings(query, unit, savingsAmount, savingsPercent)}</p>
+            <p>${
+    renderSavings(query, unit, savingsAmount, savingsPercent, storeName)
+  }</p>
             <p>${renderMemberPrompt(admin, censoredCount)}</p>
             ${renderTable(listItems)}
             <footer>

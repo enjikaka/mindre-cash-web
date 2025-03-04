@@ -5,19 +5,23 @@ export function renderSavings(
   unit: string,
   savingsAmount: string,
   savingsPercent: string,
+  storeName: string,
 ) {
-  return html`Kolla där! Du kan spara hela ${savingsAmount}/${unit} på ${query}.<br>Skillnaden mellan den billigaste och dyraste varan är <span class="savings">${savingsPercent} %</span>!`;
+  return html`
+    <p>Du kan spara hela ${savingsAmount}/${unit} på ${query}.<br>Skillnaden mellan den billigaste och dyraste varan är <span class="savings">${savingsPercent} %</span>!</p>
+    <p>Det billigaste priset på ${query} hittar du denna vecka på ${storeName}.</p>
+  `;
 }
 
 export function renderMemberPrompt(isAdmin: boolean, count: number) {
   return isAdmin
     ? ""
-    : html`<div class="feedback-danger">De ${count} billigaste varorna är gömda, men syns när du blir medlem.</div>`;
+    : html`<div class="feedback feedback-warning">De ${count} billigaste varorna är gömda, men syns när du blir medlem.</div>`;
 }
 
 export function renderTable(rows: string[][]) {
   const headers = [
-    "Märkning",
+    "",
     "Namn",
     "Kedja",
     "Styckpris",

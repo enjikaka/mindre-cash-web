@@ -13,6 +13,7 @@ export interface Item {
 }
 
 export type CleanedItem = {
+  marks: string;
   storeName: string;
   itemPrice: string;
   unitPrice: string;
