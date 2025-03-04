@@ -11,6 +11,7 @@
     "jsr:@std/net@^1.0.4": "1.0.4",
     "jsr:@std/path@^1.0.8": "1.0.8",
     "jsr:@std/streams@^1.0.9": "1.0.9",
+    "jsr:@supabase/supabase-js@*": "2.49.1",
     "jsr:@supabase/supabase-js@2": "2.48.1",
     "jsr:@supabase/supabase-js@^2.49.1": "2.49.1",
     "npm:@supabase/auth-js@2.67.3": "2.67.3",
