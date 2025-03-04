@@ -3,10 +3,15 @@ import { eTag, ifNoneMatch } from "jsr:@std/http/etag";
 import type { CleanedItem, Item, Store } from "./types.ts";
 import { renderMemberPrompt, renderSavings, renderTable } from "./render.ts";
 
-const supabase = createClient(
-  Deno.env.get("SUPABASE_URL")!,
-  Deno.env.get("SUPABASE_KEY")!,
-);
+// Add error handling for Supabase initialization
+const supabaseUrl = Deno.env.get("SUPABASE_URL");
+const supabaseKey = Deno.env.get("SUPABASE_KEY");
+
+if (!supabaseUrl || !supabaseKey) {
+  throw new Error("Missing required Supabase environment variables");
+}
+
+const supabase = createClient(supabaseUrl, supabaseKey);
 
 const adminKey = Deno.env.get("ADMIN_KEY");
 
@@ -82,9 +87,22 @@ async function getStores(): Promise<Store[]> {
   return resource.data ?? [];
 }
 
+// Add input sanitization and move filtering logic to a separate function
+function filterItems(items: Item[], query: string): Item[] {
+  if (items.length === 0) return items;
+
+  const filters: Record<string, (item: Item) => boolean> = {
+    "mjölk": ({ title }) => !title.includes("kaffe"),
+    "kaffe": ({ unit }) => unit === "kg",
+  };
+
+  return filters[query] ? items.filter(filters[query]) : items;
+}
+
 Deno.serve(async (req: Request) => {
   const url = new URL(req.url);
-  const query = url.searchParams.get("q") ?? "smör";
+  // Add input sanitization
+  const query = url.searchParams.get("q")?.toLowerCase().trim() ?? "smör";
   const admin = Boolean(url.searchParams.get("admin") === adminKey) ?? false;
 
   let items = await getItems(query);
@@ -96,14 +114,8 @@ Deno.serve(async (req: Request) => {
     });
   }
 
-  // Smarter filtering
-  if (query === "mjölk") {
-    items = items.filter(({ title }) => !title.includes("kaffe"));
-  }
-
-  if (query === "kaffe") {
-    items = items.filter(({ unit }) => unit === "kg");
-  }
+  // Replace the if-conditions with the new filtering function
+  items = filterItems(items, query);
 
   const unit = items[0].unit;
   const savingsPercent =
