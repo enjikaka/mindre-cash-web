@@ -10,6 +10,7 @@ body {
 nav {
   display: flex;
   gap: 1rem;
+  flex-wrap: wrap;
 }
 
 nav a {
@@ -19,6 +20,7 @@ nav a {
   transition: all 200ms ease;
   background-color: #d9beff;
   padding: 0.5em;
+  min-width: 100px;
 
   &:hover {
     background-color: #f0e5ff;
