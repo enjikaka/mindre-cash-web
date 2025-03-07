@@ -144,8 +144,6 @@ Deno.serve(async (req: Request) => {
         marks.push('<span title="ekologisk">🌱</span>');
       }
 
-      console.log(item.country_of_origin);
-
       if (
         item.country_of_origin?.toLocaleLowerCase().includes("sweden") ||
         item.country_of_origin?.toLocaleLowerCase().includes("sverige") ||
@@ -205,6 +203,9 @@ Deno.serve(async (req: Request) => {
               <a href="?q=mjölk">Mjölk</a>
               <a href="?q=kaffe">Kaffe</a>
               <a href="?q=fläskfilé">Fläskfilé</a>
+              <a href="?q=banan">Banan</a>
+              <a href="?q=äpple%20royal%20gala">Äpple</a>
+              <a href="?q=vitkål">Vitkål</a>
             </nav>
             <p>${
     renderSavings(query, unit, savingsAmount, savingsPercent, storeName)
