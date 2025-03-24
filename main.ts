@@ -94,12 +94,25 @@ function filterItems(items: Item[], query: string): Item[] {
   if (items.length === 0) return items;
 
   const filters: Record<string, (item: Item) => boolean> = {
-    "smör": ({ title }) => !title.toLocaleLowerCase().includes("redbart"),
+    "smör": ({ title }) => !title.toLocaleLowerCase().includes("bredbart"),
     "mjölk": ({ title }) => !title.toLocaleLowerCase().includes("kaffe"),
     "kaffe": ({ unit }) => unit === "kg",
   };
 
   return filters[query] ? items.filter(filters[query]) : items;
+}
+
+async function getPriceHistory(
+  query: string,
+): Promise<{ date: string; price: number; store: string }[]> {
+  const { data } = await supabase
+    .rpc("get_min_prices_by_date", { query_param: query });
+
+  return data?.map((record) => ({
+    date: new Date(record.recorded_at).toLocaleDateString("sv-SE"),
+    price: record.min_price,
+    store: record.store_name,
+  })) ?? [];
 }
 
 Deno.serve(async (req: Request) => {
@@ -180,6 +193,36 @@ Deno.serve(async (req: Request) => {
       String(items[0].store_uuid)
     : censor(12);
 
+  const priceHistory = await getPriceHistory(query);
+  const dates = [...new Set(priceHistory.map((p) => p.date))];
+  const _stores = [...new Set(priceHistory.map((p) => p.store))];
+
+  const storeColors: Record<string, string> = {
+    "ICA": "#e3000b",
+    "Coop": "#00a142",
+    "Hemköp": "#fadbd9",
+    "Willys": "#e60019",
+    "SnabbgrossClub": "#f39325",
+  };
+
+  const normalizeStoreName = (store: string) => {
+    if (store.toLowerCase().includes("ica")) return "ICA";
+    if (store.toLowerCase().includes("coop")) return "Coop";
+    return store;
+  };
+
+  const datasets = _stores.map((store) => ({
+    label: normalizeStoreName(store),
+    data: dates.map((date) => {
+      const entry = priceHistory.find((p) =>
+        p.date === date && p.store === store
+      );
+      return entry?.price ?? null;
+    }),
+    borderColor: storeColors[normalizeStoreName(store)] ?? "#2563eb",
+    tension: 0.1,
+  }));
+
   const body = `
         <!doctype html>
         <html>
@@ -190,6 +233,7 @@ Deno.serve(async (req: Request) => {
             <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
             <link href="https://fonts.googleapis.com/css2?family=Public+Sans:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
             <style>${stylesheet}</style>
+            <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
         </head>
         <body>
             <header>
@@ -225,11 +269,56 @@ Deno.serve(async (req: Request) => {
                 <a href="?q=isbergssallat">Isbergssallat</a>
               </section>
             </nav>
+            
             <p>${
     renderSavings(query, unit, savingsAmount, savingsPercent, storeName)
   }</p>
             <p>${renderMemberPrompt(admin, censoredCount)}</p>
             ${renderTable(listItems)}
+            
+            <div style="margin: 2rem 0; padding: 1rem; background: white; border-radius: 8px;">
+              <canvas id="priceHistory"></canvas>
+            </div>
+
+            <script>
+            new Chart(document.getElementById('priceHistory'), {
+                type: 'line',
+                data: {
+                    labels: ${JSON.stringify(dates)},
+                    datasets: ${JSON.stringify(datasets)}
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        y: {
+                            beginAtZero: false,
+                            ticks: {
+                                callback: function(value) {
+                                    return new Intl.NumberFormat('sv-SE', {
+                                        style: 'currency',
+                                        currency: 'SEK'
+                                    }).format(value);
+                                }
+                            }
+                        }
+                    },
+                    plugins: {
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return context.dataset.label + ': ' + 
+                                        new Intl.NumberFormat('sv-SE', {
+                                            style: 'currency',
+                                            currency: 'SEK'
+                                        }).format(context.raw);
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+            </script>
+            
             <footer>
               <small>Ett projekt från <a href="https://glatek.se">Glatek</a></small>
             </footer>
