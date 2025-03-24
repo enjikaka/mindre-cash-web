@@ -7,10 +7,11 @@ body {
   margin: 4em;
 }
 
-nav {
+nav section {
   display: flex;
   gap: 1rem;
   flex-wrap: wrap;
+  margin: 1em 0;
 }
 
 nav a {

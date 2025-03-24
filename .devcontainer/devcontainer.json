@@ -6,7 +6,7 @@
   "image": "mcr.microsoft.com/devcontainers/typescript-node:1-22-bookworm",
   "features": {
     "ghcr.io/devcontainers-community/features/deno:1": {
-      "version": "2.2.3"
+      "version": "2.2.5"
     }
   },
   // Features to add to the dev container. More info: https://containers.dev/features.

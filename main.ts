@@ -122,9 +122,8 @@ Deno.serve(async (req: Request) => {
 
   const unit = items[0].unit;
   const savingsPercent =
-    ((items[0].unit_price / items[items.length - 1].unit_price) * 100).toFixed(
-      0,
-    );
+    ((1 - (items[0].unit_price / items[items.length - 1].unit_price)) * 100)
+      .toFixed(0);
   const savingsAmount = currencyFormatter.format(
     Math.abs(items[items.length - 1].unit_price - items[0].unit_price),
   );
@@ -199,13 +198,32 @@ Deno.serve(async (req: Request) => {
                 <p>Det billigaste priset på dina favoritvaror!</p>
             </header>
             <nav>
-              <a href="?q=smör">Smör</a>
-              <a href="?q=mjölk">Mjölk</a>
-              <a href="?q=kaffe">Kaffe</a>
-              <a href="?q=fläskfilé">Fläskfilé</a>
-              <a href="?q=banan">Banan</a>
-              <a href="?q=äpple%20royal%20gala">Äpple</a>
-              <a href="?q=vitkål">Vitkål</a>
+              <strong>Mejeri</strong>
+              <section>
+                <a href="?q=smör">Smör</a>
+                <a href="?q=mjölk">Mjölk</a>
+                <a href="?q=gouda">Gouda</a>
+                <a href="?q=yoghurt%20naturell">Yoghurt</a>
+              </section>
+              <strong>Lyx</strong>
+              <section>
+                <a href="?q=kaffe">Kaffe</a>
+                <a href="?q=löjrom">Löjrom</a>
+              </section>
+              <strong>Kött</strong>
+              <section>
+                <a href="?q=fläskfilé">Fläskfilé</a>
+                <a href="?q=kycklingfilé">Kycklingfilé</a>
+                <a href="?q=blandfärs">Blandfärs</a>
+                <a href="?q=nötfärs">Nötfärs</a>
+              </section>
+              <strong>Frukt & grönt</strong>
+              <section>
+                <a href="?q=banan">Banan</a>
+                <a href="?q=äpple%20royal%20gala">Äpple</a>
+                <a href="?q=vitkål">Vitkål</a>
+                <a href="?q=isbergssallat">Isbergssallat</a>
+              </section>
             </nav>
             <p>${
     renderSavings(query, unit, savingsAmount, savingsPercent, storeName)
